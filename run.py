@@ -16,7 +16,10 @@ if __name__ == "__main__":
     # Get host from environment variable or use default
     host = os.getenv("HOST", "0.0.0.0")
     
+    # Check if running in production (Docker)
+    is_production = os.getenv("ENVIRONMENT", "development") == "production"
+    
     logger.info(f"Starting P2P Downloader on {host}:{port}")
     
     # Start the server
-    uvicorn.run("backend.main:app", host=host, port=port, reload=True)
+    uvicorn.run("backend.main:app", host=host, port=port, reload=not is_production)

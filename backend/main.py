@@ -11,14 +11,30 @@ from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+# Set up logging first
+logging.basicConfig(level=logging.INFO, 
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
 # Try different import methods for libtorrent
 try:
     import libtorrent as lt
+    logger.info("Successfully imported libtorrent")
 except ImportError:
     try:
         from libtorrent import libtorrent as lt
+        logger.info("Successfully imported libtorrent (alternative method)")
     except ImportError:
-        raise ImportError("Failed to import libtorrent. Make sure it's properly installed.")
+        try:
+            # Try system package import
+            import sys
+            sys.path.append('/usr/lib/python3/dist-packages')
+            import libtorrent as lt
+            logger.info("Successfully imported libtorrent (system package)")
+        except ImportError:
+            logger.error("Failed to import libtorrent. Make sure it's properly installed.")
+            # Fallback to qbittorrent API mode
+            lt = None
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, 
@@ -43,8 +59,17 @@ app.add_middleware(
 )
 
 # Initialize libtorrent session
-session = lt.session()
-session.listen_on(6881, 6891)  # Set ports for incoming connections
+session = None
+if lt:
+    try:
+        session = lt.session()
+        session.listen_on(6881, 6891)  # Set ports for incoming connections
+        logger.info("Libtorrent session initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize libtorrent session: {e}")
+        session = None
+else:
+    logger.warning("Libtorrent not available, some features may be limited")
 
 # Store active downloads
 active_downloads = {}  # handle_id -> {"handle": lt.torrent_handle, "info": {...}}
@@ -88,9 +113,9 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
-def get_download_info(handle_id: str, handle: lt.torrent_handle) -> DownloadInfo:
+def get_download_info(handle_id: str, handle) -> DownloadInfo:
     """Get download information from a torrent handle"""
-    if not handle.is_valid():
+    if not handle or not handle.is_valid():
         return None
     
     status = handle.status()
@@ -108,13 +133,17 @@ def get_download_info(handle_id: str, handle: lt.torrent_handle) -> DownloadInfo
                 "remaining_time": None,
                 "save_path": DOWNLOAD_DIR}
     else:
-        state_str = {
-            lt.torrent_status.seeding: "seeding",
-            lt.torrent_status.downloading: "downloading",
-            lt.torrent_status.finished: "finished",
-            lt.torrent_status.checking_files: "checking",
-            lt.torrent_status.checking_resume_data: "checking resume",
-        }.get(status.state, "unknown")
+        if lt:
+            state_str = {
+                lt.torrent_status.seeding: "seeding",
+                lt.torrent_status.downloading: "downloading",
+                lt.torrent_status.finished: "finished",
+                lt.torrent_status.checking_files: "checking",
+                lt.torrent_status.checking_resume_data: "checking resume",
+            }.get(status.state, "unknown")
+        else:
+            # Fallback status mapping without libtorrent constants
+            state_str = "unknown"
         
         # Calculate remaining time
         remaining = None
@@ -152,11 +181,12 @@ async def update_torrent_status():
                 updates.append(info)
                 
                 # Remove completed torrents after seeding
-                status = handle.status()
-                if status.is_seeding and status.all_time_upload > 2 * status.total_wanted:
-                    logger.info(f"Torrent {handle.name()} has seeded enough, removing from session")
-                    session.remove_torrent(handle)
-                    del active_downloads[handle_id]
+                if session:
+                    status = handle.status()
+                    if status.is_seeding and status.all_time_upload > 2 * status.total_wanted:
+                        logger.info(f"Torrent {handle.name()} has seeded enough, removing from session")
+                        session.remove_torrent(handle)
+                        del active_downloads[handle_id]
         
         if updates:
             await manager.broadcast({"type": "updates", "data": updates})
@@ -170,6 +200,9 @@ async def startup_event():
 @app.post("/api/download", response_model=Dict)
 async def start_download(request: MagnetLinkRequest):
     try:
+        if not lt or not session:
+            raise HTTPException(status_code=503, detail="Libtorrent service not available")
+            
         save_path = request.save_path if request.save_path else DOWNLOAD_DIR
         
         # Create handle from magnet link
@@ -217,6 +250,9 @@ async def get_downloads():
 async def cancel_download(download_id: str):
     if download_id not in active_downloads:
         raise HTTPException(status_code=404, detail="Download not found")
+    
+    if not session or not lt:
+        raise HTTPException(status_code=503, detail="Libtorrent service not available")
     
     handle = active_downloads[download_id]["handle"]
     session.remove_torrent(handle, lt.session.delete_files)
@@ -268,6 +304,15 @@ async def download_file(path: str):
         raise HTTPException(status_code=404, detail="File not found")
     
     return FileResponse(file_path, filename=os.path.basename(file_path))
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for Docker"""
+    return {
+        "status": "healthy", 
+        "libtorrent_available": lt is not None and session is not None,
+        "downloads_active": len(active_downloads)
+    }
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
