@@ -27,15 +27,7 @@ RUN pip install --upgrade pip && \
 # Install libtorrent from system package and create proper Python linking
 RUN python3 -c "import sys; print('Python paths:', sys.path)" && \
     find /usr -name "*libtorrent*" -type f 2>/dev/null | head -10 && \
-    python3 -c "
-try:
-    import sys
-    sys.path.append('/usr/lib/python3/dist-packages')
-    import libtorrent
-    print('Libtorrent import successful')
-except Exception as e:
-    print('Libtorrent import failed:', e)
-"
+    python3 -c "try:\n    import sys\n    sys.path.append('/usr/lib/python3/dist-packages')\n    import libtorrent\n    print('Libtorrent import successful')\nexcept Exception as e:\n    print('Libtorrent import failed:', e)"
 
 # Copy the rest of the application
 COPY . .
