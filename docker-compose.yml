@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  p2p_downloader:
+    build: .
+    container_name: p2p_downloader
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./downloads:/app/downloads
+    restart: unless-stopped
+    environment:
+      - PORT=8000
+      - HOST=0.0.0.0

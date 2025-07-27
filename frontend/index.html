@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P2P Downloader</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>P2P Magnet Link Downloader</h1>
+        </header>
+
+        <section class="download-section">
+            <div class="input-group">
+                <input type="text" id="magnet-link" placeholder="Enter magnet link here..." class="magnet-input">
+                <button id="download-btn" class="primary-btn">
+                    <i class="fas fa-download"></i> Download
+                </button>
+            </div>
+            <div class="download-error" id="download-error"></div>
+        </section>
+
+        <section class="downloads-section">
+            <h2>Active Downloads</h2>
+            <div class="downloads-container" id="downloads-list">
+                <!-- Downloads will be added here dynamically -->
+                <div class="empty-state" id="empty-downloads">
+                    <i class="fas fa-download fa-4x"></i>
+                    <p>No active downloads</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="files-section">
+            <h2>Downloaded Files</h2>
+            <div class="files-container" id="files-list">
+                <!-- Files will be added here dynamically -->
+                <div class="empty-state" id="empty-files">
+                    <i class="fas fa-file fa-4x"></i>
+                    <p>No files downloaded yet</p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Download Item Template -->
+    <template id="download-template">
+        <div class="download-item" data-id="">
+            <div class="download-header">
+                <h3 class="download-name"></h3>
+                <div class="download-actions">
+                    <button class="action-btn pause-btn" title="Pause">
+                        <i class="fas fa-pause"></i>
+                    </button>
+                    <button class="action-btn resume-btn" title="Resume" style="display:none">
+                        <i class="fas fa-play"></i>
+                    </button>
+                    <button class="action-btn cancel-btn" title="Cancel">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="download-progress-container">
+                <div class="download-progress-bar"></div>
+                <div class="download-progress-text">0%</div>
+            </div>
+            <div class="download-details">
+                <div class="detail">
+                    <span class="detail-label">Status:</span>
+                    <span class="detail-value status"></span>
+                </div>
+                <div class="detail">
+                    <span class="detail-label">Size:</span>
+                    <span class="detail-value size"></span>
+                </div>
+                <div class="detail">
+                    <span class="detail-label">Download Speed:</span>
+                    <span class="detail-value download-speed"></span>
+                </div>
+                <div class="detail">
+                    <span class="detail-label">Time Remaining:</span>
+                    <span class="detail-value time-remaining"></span>
+                </div>
+                <div class="detail">
+                    <span class="detail-label">Peers:</span>
+                    <span class="detail-value peers"></span>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- File Item Template -->
+    <template id="file-template">
+        <div class="file-item">
+            <div class="file-icon">
+                <i class="fas fa-file"></i>
+            </div>
+            <div class="file-info">
+                <h4 class="file-name"></h4>
+                <div class="file-details">
+                    <span class="file-size"></span>
+                    <span class="file-date"></span>
+                </div>
+            </div>
+            <a href="#" class="download-file-btn" title="Download File">
+                <i class="fas fa-download"></i>
+            </a>
+        </div>
+    </template>
+
+    <script src="js/app.js"></script>
+</body>
+</html>

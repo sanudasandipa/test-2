@@ -1,0 +1,18 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: P2P Downloader",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/run.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "env": {
+                "DEBUG": "True",
+                "HOST": "127.0.0.1",
+                "PORT": "8000"
+            }
+        }
+    ]
+}
